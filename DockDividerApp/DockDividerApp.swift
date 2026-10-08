@@ -8,8 +8,9 @@ struct DockDividerApp: App {
     var body: some Scene {
         Window("DockDivider", id: "main") {
             ContentView(model: model)
+                .environment(\.locale, model.language.locale)
         }
-        .defaultSize(width: 800, height: 820)
+        .defaultSize(width: 800, height: 840)
         .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(replacing: .newItem) {}

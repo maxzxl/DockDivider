@@ -11,7 +11,7 @@ struct ContentView: View {
     @ViewState private var recovery: RecoveryAction? = nil
     @ViewState private var discard = false
     @ViewState private var showDockInfo = false
-    private let contentWidth: CGFloat = 860
+    private let contentWidth: CGFloat = 820
     enum RecoveryAction: String, Identifiable {
         case previous, original, removeAll
         var id: String { rawValue }
@@ -26,17 +26,34 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 22) {
                     HStack(spacing: 14) {
                         Image(nsImage: NSApplication.shared.applicationIconImage)
-                            .resizable().scaledToFit().frame(width: 54, height: 54)
+                            .resizable().scaledToFit().frame(width: 56, height: 56)
                             .accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 5) {
                             Text("DockDivider").font(.system(size: 25, weight: .semibold))
-                            Text(L10n.string("app.tagline")).foregroundStyle(.secondary)
+                            Text(L10n.string("app.tagline")).font(.callout).foregroundStyle(.secondary)
                         }
                         Spacer()
-                        if model.isDemo { Text(L10n.string("demo.notice")).font(.caption).foregroundStyle(.secondary) }
+                        VStack(alignment: .trailing, spacing: 8) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "globe").foregroundStyle(.secondary)
+                                Picker(L10n.string("language.title"), selection: $model.language) {
+                                    ForEach(AppLanguage.allCases) { language in
+                                        Text(language.title).tag(language)
+                                    }
+                                }
+                                .pickerStyle(.menu).labelsHidden().controlSize(.small)
+                                .id(model.language)
+                                .frame(width: 135)
+                                .accessibilityLabel(L10n.string("language.title"))
+                            }
+                            .help(L10n.string("language.help"))
+                            if model.isDemo {
+                                Text(L10n.string("demo.notice")).font(.caption2).foregroundStyle(.secondary)
+                            }
+                        }
                     }
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
@@ -55,8 +72,9 @@ struct ContentView: View {
                             Spacer()
                             Button { if model.hasChanges { discard = true } else { model.reload() } } label: {
                                 Label(L10n.string("dock.read"), systemImage: "arrow.clockwise")
+                                    .font(.system(size: 12, weight: .medium))
                             }
-                            .buttonStyle(.borderless).disabled(model.isBusy)
+                            .buttonStyle(.bordered).controlSize(.small).disabled(model.isBusy)
                         }
                         DockPreviewView(model: model).disabled(!model.canEdit)
                         Text(L10n.string("dock.edit_help"))
@@ -70,7 +88,7 @@ struct ContentView: View {
                     }
                 }
                 .frame(maxWidth: contentWidth)
-                .padding(28)
+                .padding(.horizontal, 28).padding(.vertical, 24)
                 .frame(maxWidth: .infinity)
             }
             Divider()
@@ -104,7 +122,7 @@ struct ContentView: View {
             .frame(maxWidth: .infinity)
             .background(.bar)
         }
-        .frame(minWidth: 720, idealWidth: 800, minHeight: 790)
+        .frame(minWidth: 720, idealWidth: 800, minHeight: 700)
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear { model.appearanceChanged(dark: colorScheme == .dark) }
         .onChange(of: colorScheme) { _, scheme in model.appearanceChanged(dark: scheme == .dark) }

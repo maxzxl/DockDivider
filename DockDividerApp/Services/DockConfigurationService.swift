@@ -4,7 +4,20 @@ import CoreFoundation
 protocol DockPreferences {
     func read() throws -> DockSnapshot
     func writeApps(_ apps: [[String: Any]]) throws
+    func writeValues(_ values: [String: Any]) throws
+    func isForced(_ key: String) -> Bool
     var isManaged: Bool { get }
+}
+
+extension DockPreferences {
+    func isForced(_ key: String) -> Bool { isManaged }
+    func writeValues(_ values: [String: Any]) throws {
+        guard values.keys.allSatisfy({ $0 == "persistent-apps" }),
+              let apps = values["persistent-apps"] as? [[String: Any]] else {
+            throw DockError.invalid(L10n.string("error.options"))
+        }
+        try writeApps(apps)
+    }
 }
 
 final class SystemDockPreferences: DockPreferences {
@@ -12,6 +25,7 @@ final class SystemDockPreferences: DockPreferences {
     var isManaged: Bool {
         CFPreferencesAppValueIsForced("persistent-apps" as CFString, domain)
     }
+    func isForced(_ key: String) -> Bool { CFPreferencesAppValueIsForced(key as CFString, domain) }
     func read() throws -> DockSnapshot {
         guard CFPreferencesSynchronize(domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost),
               let values = CFPreferencesCopyMultiple(nil, domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost) as? [String: Any],
@@ -20,10 +34,14 @@ final class SystemDockPreferences: DockPreferences {
         }
         return DockSnapshot(domain: values)
     }
-    func writeApps(_ apps: [[String: Any]]) throws {
-        guard !isManaged else { throw DockError.managed }
-        CFPreferencesSetValue("persistent-apps" as CFString, apps as CFArray, domain,
-                              kCFPreferencesCurrentUser, kCFPreferencesAnyHost)
+    func writeApps(_ apps: [[String: Any]]) throws { try writeValues(["persistent-apps": apps]) }
+    func writeValues(_ values: [String: Any]) throws {
+        let allowed = DockOptions.keys.union(["persistent-apps"])
+        guard Set(values.keys).isSubset(of: allowed), PropertyListSerialization.propertyList(values, isValidFor: .binary) else {
+            throw DockError.invalid(L10n.string("error.configuration"))
+        }
+        guard !values.keys.contains(where: isForced) else { throw DockError.managed }
+        CFPreferencesSetMultiple(values as CFDictionary, nil, domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost)
         guard CFPreferencesSynchronize(domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost) else {
             throw DockError.io(L10n.string("error.write"))
         }
@@ -36,7 +54,7 @@ struct DockConfigurationService {
     func read() throws -> (DockSnapshot, [DockItem]) {
         let snapshot = try preferences.read()
         var items = snapshot.apps.enumerated().map { index, raw in
-            DockItem(id: "\(index)-\(DockItem.guid(in: raw) ?? 0)", raw: raw, divider: registry.record(for: raw))
+            DockItem(id: "\(index)-\(DockItem.guid(in: raw) ?? 0)", raw: raw, divider: registry.record(for: raw), isFinder: DockItem.fileURL(in: raw)?.path == "/System/Library/CoreServices/Finder.app")
         }
         // Finder is implicit on modern macOS and is not stored in persistent-apps.
         if !items.contains(where: { $0.url?.path == "/System/Library/CoreServices/Finder.app" }) {

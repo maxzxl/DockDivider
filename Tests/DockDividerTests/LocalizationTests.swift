@@ -32,4 +32,45 @@ struct LocalizationTests {
             #expect(message.contains("Finder"))
         }
     }
+    @Test func explicitLanguagesResolveIndependentlyOfSystemPreferences() {
+        #expect(L10n.string("dock.current", language: .english) == "Current Dock")
+        #expect(L10n.string("dock.current", language: .german) == "Aktuelles Dock")
+        #expect(L10n.format("status.count", language: .english, 12, 2) == "12 saved Dock entries · 2 own dividers")
+        #expect(AppLanguage.english.locale.language.languageCode?.identifier == "en")
+        #expect(AppLanguage.german.locale.language.languageCode?.identifier == "de")
+    }
+
+    @Test @MainActor func languageSwitchPersistsAndKeepsTheDraft() throws {
+        let name = "DockDividerLanguageTests-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        #expect(AppLanguage.saved(in: defaults) == .system)
+        defaults.set("unknown-language", forKey: AppLanguage.preferenceKey)
+        #expect(AppLanguage.saved(in: defaults) == .system)
+        defaults.set("de", forKey: AppLanguage.preferenceKey)
+        let model = DockViewModel(demo: true, defaults: defaults)
+        defer { try? FileManager.default.removeItem(at: model.paths.root) }
+        #expect(model.error == nil)
+        #expect(model.language == .german)
+        model.selectedStyle = .smallSpacer
+        model.insert(at: 2)
+        let ids = model.items.map(\.id)
+        let raw = model.items.map(\.raw)
+        #expect(model.status.contains("Vorschau"))
+        model.language = .english
+        #expect(model.hasChanges)
+        #expect(model.selectedStyle == .smallSpacer)
+        #expect(model.items.map(\.id) == ids)
+        #expect(Plist.equal(model.items.map(\.raw), raw))
+        #expect(model.status == L10n.string("status.preview", language: .english))
+        #expect(AppLanguage.saved(in: defaults) == .english)
+        let reopened = DockViewModel(demo: true, defaults: defaults)
+        defer { try? FileManager.default.removeItem(at: reopened.paths.root) }
+        #expect(reopened.language == .english)
+        #expect(reopened.status.contains("saved Dock entries"))
+        model.language = .system
+        #expect(AppLanguage.saved(in: defaults) == .system)
+        #expect(model.hasChanges)
+    }
+
 }

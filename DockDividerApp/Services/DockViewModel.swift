@@ -5,17 +5,35 @@ import Combine
 final class DockViewModel: ObservableObject {
     @Published var items: [DockItem] = []
     @Published var selectedStyle: DividerStyle = .system
+    @Published var language: AppLanguage {
+        didSet { defaults.set(language.rawValue, forKey: AppLanguage.preferenceKey) }
+    }
     @Published var matchAppearance = true
     @Published var automaticallyReload = true
     @Published private(set) var hasChanges = false
     @Published private(set) var isBusy = false
     @Published var error: String?
-    @Published private(set) var status = L10n.string("status.reading")
+    private enum Status: String {
+        case reading, readFailed = "read_failed", count, preview, appearance, saved, configuration, restarted
+    }
+    @Published private var currentStatus: Status = .reading
+    @Published private var requiresDockReload = false
+    var status: String {
+        let message = currentStatus == .count
+            ? L10n.format("status.count", language: language, snapshot?.apps.count ?? 0, managedCount)
+            : L10n.string("status.\(currentStatus.rawValue)", language: language)
+        return message + (requiresDockReload ? L10n.string("status.restart_note", language: language) : "")
+    }
+    private func setStatus(_ status: Status, requiresReload: Bool = false) {
+        currentStatus = status
+        requiresDockReload = requiresReload
+    }
     @Published private(set) var snapshot: DockSnapshot?
     @Published private(set) var backupAvailable = false
     @Published private(set) var originalAvailable = false
     let isDemo: Bool
     let paths: AppPaths
+    private let defaults: UserDefaults
     private var registry: DividerRegistry?
     private var service: DockConfigurationService?
     private var writer: DockWriter?
@@ -24,11 +42,13 @@ final class DockViewModel: ObservableObject {
     private var refreshTask: Task<Void, Never>?
     private var dark = false
 
-    init(demo: Bool = ProcessInfo.processInfo.arguments.contains("--demo")) {
+    init(demo: Bool = ProcessInfo.processInfo.arguments.contains("--demo"), defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        language = AppLanguage.saved(in: defaults)
         isDemo = demo
         paths = demo ? AppPaths(root: FileManager.default.temporaryDirectory.appendingPathComponent("DockDividerDemo-\(UUID().uuidString)")) : AppPaths()
-        matchAppearance = UserDefaults.standard.object(forKey: "matchAppearance") as? Bool ?? true
-        automaticallyReload = UserDefaults.standard.object(forKey: "automaticallyReload") as? Bool ?? true
+        matchAppearance = defaults.object(forKey: "matchAppearance") as? Bool ?? true
+        automaticallyReload = defaults.object(forKey: "automaticallyReload") as? Bool ?? true
         do {
             let registry = try DividerRegistry(paths: paths)
             let preferences: DockPreferences = demo ? DemoDockPreferences() : SystemDockPreferences()
@@ -41,7 +61,7 @@ final class DockViewModel: ObservableObject {
             timer = Timer.publish(every: 5, on: .main, in: .common).autoconnect().sink { [weak self] _ in
                 self?.pollDock()
             }
-        } catch { self.error = error.localizedDescription; status = L10n.string("status.read_failed") }
+        } catch { self.error = error.localizedDescription; setStatus(.readFailed) }
     }
     var managedCount: Int { items.filter(\.isManaged).count }
     var canEdit: Bool { snapshot != nil && !isBusy && service?.preferences.isManaged == false }
@@ -55,7 +75,7 @@ final class DockViewModel: ObservableObject {
             self.snapshot = snapshot; self.items = items; hasChanges = false
             backupAvailable = writer?.backups.hasPrevious ?? false
             originalAvailable = writer?.backups.hasOriginal ?? false
-            status = L10n.format("status.count", snapshot.apps.count, managedCount)
+            setStatus(.count)
         } catch { self.error = error.localizedDescription }
     }
     func insert(at index: Int) {
@@ -68,11 +88,12 @@ final class DockViewModel: ObservableObject {
         let raw: [String: Any] = ["GUID": NSNumber(value: guid), "tile-type": selectedStyle.tileType, "tile-data": [String: Any]()]
         items.insert(DockItem(id: record.id.uuidString, raw: raw, divider: record), at: index)
         hasChanges = true
-        status = L10n.string("status.preview")
+        setStatus(.preview)
     }
     func remove(_ id: String) {
         guard canEdit, items.contains(where: { $0.id == id && $0.isManaged }) else { return }
         items.removeAll { $0.id == id }; hasChanges = true
+        setStatus(.preview)
     }
     func move(_ id: String, to insertionIndex: Int) {
         guard canEdit, let source = items.firstIndex(where: { $0.id == id && $0.isManaged }) else { return }
@@ -81,14 +102,15 @@ final class DockViewModel: ObservableObject {
         let item = items.remove(at: source)
         items.insert(item, at: destination > source ? destination - 1 : destination)
         hasChanges = true
+        setStatus(.preview)
     }
     func shift(_ id: String, by delta: Int) {
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
         move(id, to: index + (delta > 0 ? 2 : -1))
     }
     func settingsChanged() {
-        UserDefaults.standard.set(matchAppearance, forKey: "matchAppearance")
-        UserDefaults.standard.set(automaticallyReload, forKey: "automaticallyReload")
+        defaults.set(matchAppearance, forKey: "matchAppearance")
+        defaults.set(automaticallyReload, forKey: "automaticallyReload")
         scheduleAppearanceRefresh()
     }
     func appearanceChanged(dark: Bool) {
@@ -135,9 +157,8 @@ final class DockViewModel: ObservableObject {
             try registry.register(records)
             try writer.apply(prepared, expected: expected)
             reload()
-            status = appearanceOnly ? L10n.string("status.appearance") : L10n.string("status.saved")
             if automaticallyReload && !isDemo { try ProcessRunner.reloadDock() }
-            else if !isDemo { status += L10n.string("status.restart_note") }
+            setStatus(appearanceOnly ? .appearance : .saved, requiresReload: !automaticallyReload && !isDemo)
         } catch { self.error = error.localizedDescription }
     }
     func removeAll() { perform { try self.writer?.removeAll() } }
@@ -149,12 +170,12 @@ final class DockViewModel: ObservableObject {
         do {
             try operation(); reload()
             if automaticallyReload && !isDemo { try ProcessRunner.reloadDock() }
-            status = L10n.string("status.configuration")
+            setStatus(.configuration)
         } catch { self.error = error.localizedDescription }
     }
     func restartDock() {
         guard !isDemo else { return }
-        do { try ProcessRunner.reloadDock(); status = L10n.string("status.restarted") }
+        do { try ProcessRunner.reloadDock(); setStatus(.restarted) }
         catch { self.error = error.localizedDescription }
     }
     func showBackups() {

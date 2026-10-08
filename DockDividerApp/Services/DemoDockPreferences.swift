@@ -15,5 +15,6 @@ final class DemoDockPreferences: DockPreferences {
         }, "persistent-others": [], "orientation": "bottom", "tilesize": 52])
     }
     func read() throws -> DockSnapshot { snapshot }
+    func writeValues(_ values: [String: Any]) throws { snapshot.domain.merge(values) { _, new in new } }
     func writeApps(_ apps: [[String: Any]]) throws { snapshot.domain["persistent-apps"] = apps }
 }

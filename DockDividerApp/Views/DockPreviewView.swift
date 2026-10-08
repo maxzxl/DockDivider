@@ -14,11 +14,11 @@ struct DockPreviewView: View {
                 }
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 16)
+            .padding(.vertical, 12)
         }
-        .frame(height: 140)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(.separator.opacity(0.4)))
+        .frame(height: 128)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.separator.opacity(0.4)))
     }
     private func tile(_ item: DockItem, at index: Int) -> some View {
         VStack(spacing: 9) {

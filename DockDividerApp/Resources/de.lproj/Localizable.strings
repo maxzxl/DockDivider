@@ -83,3 +83,7 @@
 "error.invalid_backup" = "Ungültiges Backup: %@";
 "dock.read_info" = "Beim Einlesen werden dauerhaft gespeicherte Apps mit „Im Dock behalten“ übernommen. Apps, die nur gerade geöffnet sind und nach dem Schließen aus dem Dock verschwinden, werden nicht eingelesen. Finder wird immer angezeigt.";
 "dock.read_info_label" = "Informationen zum Einlesen des Docks";
+"language.title" = "Sprache";
+"language.system" = "Wie macOS";
+"language.help" = "App-Sprache wechseln. Änderungen gelten sofort.";
+"settings.style_help" = "Für neue Divider";

@@ -12,7 +12,7 @@ DockDivider helps you group your apps with subtle lines and empty spaces. Pick a
 - Move your dividers with drag and drop or the arrow buttons.
 - Transparent divider backgrounds and automatic Light/Dark Mode matching.
 - Automatic backups, with options to restore your previous Dock or remove all your dividers.
-- A native macOS interface, available in English and German.
+- A native macOS interface with instant switching between English, German and your system language.
 
 The preview shows apps pinned with **Keep in Dock**. Apps that are only running and disappear when closed aren’t included. Line dividers use transparent helper icons; spacers use the Dock’s built-in gaps.
 
@@ -42,5 +42,3 @@ Want to try it first? Launch a demo that leaves your Dock untouched:
 ```sh
 open -n build/DockDivider.app --args --demo
 ```
-
-For setup details and recovery notes, see the [guide](Documentation/Guide.md). The [technical notes](Documentation/TechnicalNotes.md) explain how it works.

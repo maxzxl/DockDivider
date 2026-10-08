@@ -83,3 +83,7 @@
 "error.invalid_backup" = "Invalid backup: %@";
 "dock.read_info" = "Reading the Dock includes apps pinned with “Keep in Dock”. Apps that are only running and disappear from the Dock when closed are not included. Finder is always shown.";
 "dock.read_info_label" = "About reading the Dock";
+"language.title" = "Language";
+"language.system" = "Follow macOS";
+"language.help" = "Change the app language. Changes take effect immediately.";
+"settings.style_help" = "For new dividers";
