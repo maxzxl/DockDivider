@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="360" viewBox="0 0 900 360" role="img" aria-labelledby="title desc">
+  <title id="title">App screenshot placeholder</title>
+  <desc id="desc">Reserved space for a screenshot to be added later.</desc>
+  <rect x="1" y="1" width="898" height="358" rx="18" fill="#f7f9fc" stroke="#d4dbe5" stroke-dasharray="7 7"/>
+  <text x="450" y="176.0" text-anchor="middle" fill="#526174" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="20" font-weight="500">App screenshot</text>
+  <text x="450" y="204.0" text-anchor="middle" fill="#8994a3" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="14">Screenshot coming soon</text>
+</svg>
